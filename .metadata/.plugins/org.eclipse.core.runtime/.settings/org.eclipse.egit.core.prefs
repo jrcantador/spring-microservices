@@ -1,0 +1,4 @@
+GitRepositoriesView.GitDirectories=D\:\\Curso\\microservices\\config-server-remote\\.git;D\:\\Curso\\microservices\\config-server\\.git;
+GitRepositoriesView.GitDirectories.relative=config-server-remote\\.git;config-server\\.git;
+core_autoIgnoreDerivedResources=false
+eclipse.preferences.version=1

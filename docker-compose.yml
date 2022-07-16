@@ -1,0 +1,140 @@
+version: '3.4'
+
+services:
+ zipkin-server:
+  image: openzipkin/zipkin:2.23.2
+  ports:
+   - 9411:9411
+  depends_on:
+   - rabbit-mq
+  environment:
+   RABBIT_URI: amqp://guest:guesnt@rabbit-mq:5672
+  networks:
+   - jrcantador-network
+   
+ rabbit-mq:
+  image: rabbitmq:3.8.14-management
+  ports:
+   - 5672:5672
+   - 15672:15672
+  networks:
+   - jrcantador-network
+   
+ naming-server:
+  image: jrcantador/naming-server:0.0.1-SNAPSHOT
+  ports: 
+   - 8761:8761
+  networks:
+   - jrcantador-network
+   
+ cambio-db:
+  image: mysql:8
+  command: --default-authentication-plugin=mysql_native_password
+  restart: always
+  ports:
+   - 3308:3308
+  expose:
+   - 3308
+  environment:
+   TZ: America/Sap_Paulo
+   MYSQL_ROOT_PASSWORD: admin123
+   MYSQL_USER: docker
+   MYSQL_PASSWORD: admin123
+   MYSQL_DATABASE: cambio_service
+   MYSQL_ROOT_HOST: '%'
+   MYSQL_TCP_PORT: 3308
+  networks:
+   - jrcantador-network
+   
+ book-db:
+  image: mysql:8
+  command: --default-authentication-plugin=mysql_native_password
+  restart: always
+  ports:
+   - 3310:3310
+  expose:
+   - 3310
+  environment:
+   TZ: America/Sap_Paulo
+   MYSQL_ROOT_PASSWORD: admin123
+   MYSQL_USER: docker
+   MYSQL_PASSWORD: admin123
+   MYSQL_DATABASE: book_service
+   MYSQL_ROOT_HOST: '%'
+   MYSQL_TCP_PORT: 3310
+  networks:
+   - jrcantador-network  
+   
+ api-geteway:
+  image: jrcantador/api-gateway:0.0.1-SNAPSHOT
+  ports:
+   - 8765:8765
+  depends_on:
+   - naming-server
+   - rabbit-mq
+  environment:
+   SPRING.ZIPKIN.BASE-URL: http://192.168.0.128:9411
+   EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://192.168.0.128:8761/eureka  
+   RABBIT_URL: amqp://guest:guesnt@rabbit-mq:5672   
+   SPRING_RABBITMQ_HOST: 192.168.0.128
+   SPRING_ZIPKIN_SENDER_TYPE: rabbit
+ 
+ cambio-service:
+  image: jrcantador/cambio-service
+  build:
+   context: .
+   dockerfile: cambio-service/Dockerfile
+  ports:
+   - 8000:8000
+  depends_on:
+   - naming-server
+   - cambio-db
+   - api-geteway
+   - rabbit-mq
+  networks:
+   - jrcantador-network
+  environment:
+   TZ: America/Sap_Paulo
+   SPRING.ZIPKIN.BASE-URL: http://192.168.0.128:9411
+   EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://192.168.0.128:8761/eureka
+   SPRING.DATASOURCE.URL: jdbc:mysql://192.168.0.128:3308/cambio_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+   SPRING.DATASOURCE.USERNAME: root
+   SPRING.DATASOURCE.PASSWORD: admin123
+   SPRING.FLYWAY.URL: jdbc:mysql://192.168.0.128:3308/cambio_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+   SPRING.FLYWAY.USER: root
+   SPRING.FLYWAY.PASSWORD: admin123
+   RABBIT_URL: amqp://guest:guesnt@rabbit-mq:5672   
+   SPRING_RABBITMQ_HOST: 192.168.0.128
+   SPRING_ZIPKIN_SENDER_TYPE: rabbit
+   
+ book-service:
+  image: jrcantador/book-service
+  build:
+   context: .
+   dockerfile: book-service/Dockerfile
+  ports:
+   - 8100:8100
+  depends_on:
+   - naming-server
+   - book-db
+   - api-geteway
+   - rabbit-mq
+  networks:
+   - jrcantador-network
+  environment:
+   TZ: America/Sap_Paulo
+   SPRING.ZIPKIN.BASE-URL: http://192.168.0.128:9411
+   EUREKA.CLIENT.SERVICEURL.DEFAULTZONE: http://192.168.0.128:8761/eureka
+   SPRING.DATASOURCE.URL: jdbc:mysql://192.168.0.128:3310/book_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+   SPRING.DATASOURCE.USERNAME: root
+   SPRING.DATASOURCE.PASSWORD: admin123
+   SPRING.FLYWAY.URL: jdbc:mysql://192.168.0.128:3310/book_service?useSSL=false&serverTimezone=UTC&enabledTLSProtocols=TLSv1.2
+   SPRING.FLYWAY.USER: root
+   SPRING.FLYWAY.PASSWORD: admin123
+   RABBIT_URL: amqp://guest:guesnt@rabbit-mq:5672   
+   SPRING_RABBITMQ_HOST: 192.168.0.128
+   SPRING_ZIPKIN_SENDER_TYPE: rabbit
+   
+networks:
+ jrcantador-network:
+  driver: bridge
