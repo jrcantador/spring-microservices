@@ -22,11 +22,11 @@ jobs:
            distribution: 'adopt'
       - name: Build Eureka
         working-directory: ./naming-server
-        run: mvn spring-boot:build image
+        run: mvn spring-boot:build-image
 
       - name: Build API Gateway
         working-directory: ./api-gateway
-        run: mvn spring-boot:build image
+        run: mvn spring-boot:build-image
       
       - name: Build Cambio Microservice
         working-directory: ./cambio-service
